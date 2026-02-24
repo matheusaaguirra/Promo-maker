@@ -300,76 +300,42 @@ async function readProduct(){
 
   try{
 
-    let finalURL=link;
+    setStatus('loading','🤖','Lendo produto...');
 
-    // 🔥 SE FOR LINK CURTO → RESOLVE REDIRECT
-    if(/meli\.la/i.test(link)){
+    // 🔥 CHAMA SEU BACKEND (IMPORTANTE)
+    const data = await fetch(`/api/read?url=${encodeURIComponent(link)}`)
+      .then(r=>r.json());
 
-      setStatus('loading','🤖','Resolvendo link afiliado...');
+    if(data.error) throw new Error(data.error);
 
-      const data = await fetch(`/api/read?url=${encodeURIComponent(link)}`)
-  .then(r=>r.json());
+    const fmt=v=>Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
 
-    }
+    document.getElementById('titleInput').value=data.titulo||'';
+    document.getElementById('priceTo').value=data.preco_promo||'';
+    document.getElementById('priceFrom').value=data.preco_original||'';
+    document.getElementById('discountInput').value=data.desconto||'';
+    document.getElementById('parcelaInput').value=data.parcelamento||'';
+    document.getElementById('shopInput').value=data.loja||'';
 
-    const itemId=extractMLItemId(finalURL);
-
-    if(!itemId){
-      throw new Error("ID não encontrado");
-    }
-
-    setStatus('loading','🤖','Buscando produto...');
-
-    const item=await fetch(`https://api.allorigins.win/raw?url=${
-      encodeURIComponent(`https://api.mercadolibre.com/items/${itemId}`)
-    }`).then(r=>r.json());
-
-    let seller={};
-    try{
-      seller=await fetch(`https://api.allorigins.win/raw?url=${
-        encodeURIComponent(`https://api.mercadolibre.com/users/${item.seller_id}`)
-      }`).then(r=>r.json());
-    }catch{}
-
-    const fmt=v=>v.toLocaleString('pt-BR',{minimumFractionDigits:2});
-
-    document.getElementById('titleInput').value=item.title||'';
-    document.getElementById('priceTo').value=fmt(item.price||0);
-
-    if(item.original_price){
-      document.getElementById('priceFrom').value=fmt(item.original_price);
-      document.getElementById('discountInput').value=
-        Math.round((1-item.price/item.original_price)*100)+'%';
-    }
-
-    if(item.installments){
-      const i=item.installments;
-      document.getElementById('parcelaInput').value=
-        i.quantity+'x de R$ '+
-        i.amount.toLocaleString('pt-BR',{minimumFractionDigits:2})+
-        (i.rate===0?' sem juros':'');
-    }
-
-    document.getElementById('shopInput').value=seller.nickname||'';
-
-    if(item.thumbnail){
-      document.getElementById('thumbImg').src=item.thumbnail.replace('http','https');
-      document.getElementById('thumbTitle').textContent=item.title;
-      document.getElementById('thumbPrice').textContent='R$ '+fmt(item.price);
+    if(data.thumbnail){
+      document.getElementById('thumbImg').src=data.thumbnail;
+      document.getElementById('thumbTitle').textContent=data.titulo;
+      document.getElementById('thumbPrice').textContent='R$ '+data.preco_promo;
       document.getElementById('productThumb').classList.add('show');
     }
 
     setStatus('ok','✅','Produto carregado!');
 
   }catch(e){
+
     console.error(e);
     setStatus('err','❌','Não consegui ler esse link');
+
   }
 
   btn.classList.remove('loading');
   btn.textContent='🤖';
 }
-
 /* ===========================
    DESCONTO AUTO
 =========================== */
