@@ -307,8 +307,8 @@ async function readProduct(){
 
       setStatus('loading','🤖','Resolvendo link afiliado...');
 
-      const r=await fetch(`https://corsproxy.io/?${encodeURIComponent(link)}`);
-      finalURL=r.url;
+      const data = await fetch(`/api/read?url=${encodeURIComponent(link)}`)
+  .then(r=>r.json());
 
     }
 
