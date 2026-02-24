@@ -1,0 +1,9 @@
+{
+  "name": "promo-maker-ml",
+  "version": "1.0.0",
+  "description": "Gerador de promos do Mercado Livre para WhatsApp",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}
