@@ -299,35 +299,85 @@ async function readProduct() {
   btn.textContent = '⏳';
   setStatus('loading', '🤖', `Buscando ${itemId}...`);
 
-  try {
-    // Chama nosso próprio backend no Vercel — sem CORS!
-    const res = await fetch(`/api/produto?id=${itemId}`);
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Erro na API');
+  // Tenta múltiplos proxies em sequência para garantir que funcione
+  const ML_URL = `https://api.mercadolibre.com/items/${itemId}`;
+  const SELLER_URL = (sellerId) => `https://api.mercadolibre.com/users/${sellerId}`;
+  const proxies = [
+    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  ];
+
+  async function fetchML(url) {
+    // Tenta direto primeiro (funciona no Vercel/backend próprio)
+    try {
+      const r = await fetch(url);
+      if (r.ok) return r.json();
+    } catch(e) {}
+    // Tenta proxies em sequência
+    for (const proxy of proxies) {
+      try {
+        const r = await fetch(proxy(url));
+        if (r.ok) return r.json();
+      } catch(e) {}
     }
-    const p = await res.json();
+    throw new Error('Não foi possível acessar a API do ML');
+  }
+
+  try {
+    const item = await fetchML(ML_URL);
+
+    // Busca vendedor
+    let seller = {};
+    try { seller = await fetchML(SELLER_URL(item.seller_id)); } catch(e) {}
+
+    // Processa preços
+    const preco_promo    = item.price || 0;
+    const preco_original = item.original_price || null;
+
+    let desconto = null;
+    if (preco_original && preco_original > preco_promo) {
+      desconto = Math.round((1 - preco_promo / preco_original) * 100) + '%';
+    }
+
+    let parcelamento = null;
+    if (item.installments) {
+      const inst  = item.installments;
+      const valor = inst.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+      parcelamento = inst.quantity + 'x de R$ ' + valor + (inst.rate === 0 ? ' sem juros' : '');
+    }
+
+    const fmt = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    const p = {
+      titulo:         item.title,
+      preco_promo:    fmt(preco_promo),
+      preco_original: preco_original ? fmt(preco_original) : null,
+      desconto,
+      parcelamento,
+      loja:           seller.nickname || null,
+      thumbnail:      item.thumbnail || null,
+    };
 
     // Preenche campos
-    document.getElementById('titleInput').value  = p.titulo || '';
-    document.getElementById('priceFrom').value   = p.preco_original || '';
-    document.getElementById('priceTo').value     = p.preco_promo || '';
+    document.getElementById('titleInput').value   = p.titulo || '';
+    document.getElementById('priceFrom').value    = p.preco_original || '';
+    document.getElementById('priceTo').value      = p.preco_promo || '';
     document.getElementById('parcelaInput').value = p.parcelamento || '';
-    document.getElementById('shopInput').value   = p.loja || '';
+    document.getElementById('shopInput').value    = p.loja || '';
     document.getElementById('discountInput').value = p.desconto || '';
 
     // Mostra thumb
     if (p.thumbnail) {
       document.getElementById('thumbImg').src = p.thumbnail.replace('http://', 'https://');
       document.getElementById('thumbTitle').textContent = p.titulo;
-      document.getElementById('thumbPrice').textContent = `R$ ${p.preco_promo}${p.desconto ? ' — ' + p.desconto + ' OFF' : ''}`;
+      document.getElementById('thumbPrice').textContent = 'R$ ' + p.preco_promo + (p.desconto ? ' — ' + p.desconto + ' OFF' : '');
       document.getElementById('productThumb').classList.add('show');
     }
 
-    setStatus('ok', '✅', `Produto lido!${p.desconto ? ' ' + p.desconto + ' de desconto 🔥' : ''}`);
+    setStatus('ok', '✅', 'Produto lido!' + (p.desconto ? ' ' + p.desconto + ' de desconto 🔥' : ''));
   } catch (err) {
     console.error(err);
-    setStatus('err', '❌', err.message || 'Erro ao buscar produto. Tente o link completo.');
+    setStatus('err', '❌', 'Erro ao buscar produto. Verifique o link e tente novamente.');
   } finally {
     btn.classList.remove('loading');
     btn.textContent = '🤖';
