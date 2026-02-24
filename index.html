@@ -285,100 +285,89 @@ function extractMLItemId(url) {
 
 
 
-async function readProduct() {
+async function readProduct(){
 
-  const link = document.getElementById('linkInput').value.trim();
-  if (!link) {
-    setStatus('err','⚠️','Cole o link primeiro');
+  const link=document.getElementById('linkInput').value.trim();
+
+  if(!link){
+    setStatus('err','⚠️','Cole o link');
     return;
   }
 
-  const itemId = extractMLItemId(link);
-
-  if (!itemId) {
-    setStatus('err','❌','Não achei código MLB no link');
-    return;
-  }
-
-  const btn = document.getElementById('botBtn');
+  const btn=document.getElementById('botBtn');
   btn.classList.add('loading');
   btn.textContent='⏳';
 
-  setStatus('loading','🤖','Buscando produto...');
-
-  const ML_URL = `https://api.mercadolibre.com/items/${itemId}`;
-  const SELLER_URL = (id)=>`https://api.mercadolibre.com/users/${id}`;
-
-  const proxies = [
-    (url)=>url,
-    (url)=>`https://corsproxy.io/?${encodeURIComponent(url)}`,
-    (url)=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
-  ];
-
-  async function fetchML(url){
-
-    for(const p of proxies){
-      try{
-        const r=await fetch(p(url));
-        if(r.ok) return r.json();
-      }catch(e){}
-    }
-
-    throw new Error("Falha API");
-  }
-
   try{
 
-    const item = await fetchML(ML_URL);
+    let finalURL=link;
+
+    // 🔥 SE FOR LINK CURTO → RESOLVE REDIRECT
+    if(/meli\.la/i.test(link)){
+
+      setStatus('loading','🤖','Resolvendo link afiliado...');
+
+      const r=await fetch(`https://corsproxy.io/?${encodeURIComponent(link)}`);
+      finalURL=r.url;
+
+    }
+
+    const itemId=extractMLItemId(finalURL);
+
+    if(!itemId){
+      throw new Error("ID não encontrado");
+    }
+
+    setStatus('loading','🤖','Buscando produto...');
+
+    const item=await fetch(`https://api.allorigins.win/raw?url=${
+      encodeURIComponent(`https://api.mercadolibre.com/items/${itemId}`)
+    }`).then(r=>r.json());
 
     let seller={};
     try{
-      seller=await fetchML(SELLER_URL(item.seller_id));
+      seller=await fetch(`https://api.allorigins.win/raw?url=${
+        encodeURIComponent(`https://api.mercadolibre.com/users/${item.seller_id}`)
+      }`).then(r=>r.json());
     }catch{}
-
-    const precoPromo = item.price || 0;
-    const precoOrig  = item.original_price || null;
-
-    let desconto=null;
-
-    if(precoOrig && precoOrig>precoPromo){
-      desconto=Math.round((1-precoPromo/precoOrig)*100)+'%';
-    }
-
-    let parcelamento=null;
-
-    if(item.installments){
-      const i=item.installments;
-      const valor=i.amount.toLocaleString('pt-BR',{minimumFractionDigits:2});
-      parcelamento=i.quantity+'x de R$ '+valor+(i.rate===0?' sem juros':'');
-    }
 
     const fmt=v=>v.toLocaleString('pt-BR',{minimumFractionDigits:2});
 
     document.getElementById('titleInput').value=item.title||'';
-    document.getElementById('priceFrom').value=precoOrig?fmt(precoOrig):'';
-    document.getElementById('priceTo').value=fmt(precoPromo);
-    document.getElementById('parcelaInput').value=parcelamento||'';
+    document.getElementById('priceTo').value=fmt(item.price||0);
+
+    if(item.original_price){
+      document.getElementById('priceFrom').value=fmt(item.original_price);
+      document.getElementById('discountInput').value=
+        Math.round((1-item.price/item.original_price)*100)+'%';
+    }
+
+    if(item.installments){
+      const i=item.installments;
+      document.getElementById('parcelaInput').value=
+        i.quantity+'x de R$ '+
+        i.amount.toLocaleString('pt-BR',{minimumFractionDigits:2})+
+        (i.rate===0?' sem juros':'');
+    }
+
     document.getElementById('shopInput').value=seller.nickname||'';
-    document.getElementById('discountInput').value=desconto||'';
 
     if(item.thumbnail){
-      document.getElementById('thumbImg').src=item.thumbnail.replace('http://','https://');
+      document.getElementById('thumbImg').src=item.thumbnail.replace('http','https');
       document.getElementById('thumbTitle').textContent=item.title;
-      document.getElementById('thumbPrice').textContent='R$ '+fmt(precoPromo)+(desconto?' — '+desconto+' OFF':'');
+      document.getElementById('thumbPrice').textContent='R$ '+fmt(item.price);
       document.getElementById('productThumb').classList.add('show');
     }
 
     setStatus('ok','✅','Produto carregado!');
 
-  }catch(err){
-    console.error(err);
-    setStatus('err','❌','Erro ao ler produto');
+  }catch(e){
+    console.error(e);
+    setStatus('err','❌','Não consegui ler esse link');
   }
-  finally{
-    btn.classList.remove('loading');
-    btn.textContent='🤖';
-  }
+
+  btn.classList.remove('loading');
+  btn.textContent='🤖';
 }
 
 /* ===========================
