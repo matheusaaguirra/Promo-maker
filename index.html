@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promo Maker ML</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --border: #2a2a2a;
+    --yellow: #FFE000; --yellow-dark: #e6c800;
+    --text: #ffffff; --muted: #888; --success: #22c55e; --error: #ef4444;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Barlow', sans-serif; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(255,224,0,0.04) 0%, transparent 60%);
+  }
+  .container { width: 100%; max-width: 520px; }
+  .header { text-align: center; margin-bottom: 28px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--yellow); color: #000; font-size: 10px;
+    font-weight: 700; letter-spacing: 2px; padding: 4px 12px;
+    border-radius: 2px; margin-bottom: 12px; text-transform: uppercase;
+  }
+  .title {
+    font-family: 'Anton', sans-serif; font-size: clamp(40px, 10vw, 58px);
+    line-height: 0.95; letter-spacing: -1px; text-transform: uppercase;
+  }
+  .title span { color: var(--yellow); }
+  .subtitle { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px;
+  }
+  .field { margin-bottom: 18px; }
+  label {
+    display: block; font-size: 10px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  label .req { color: var(--yellow); }
+  .input-wrap { position: relative; display: flex; align-items: center; }
+  input[type="text"] {
+    width: 100%; background: #111; border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: 'Barlow', sans-serif;
+    font-size: 14px; padding: 12px 14px; transition: border-color 0.2s; outline: none;
+  }
+  input:focus { border-color: var(--yellow); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .bot-btn {
+    position: absolute; right: 8px; background: var(--yellow); border: none;
+    border-radius: 6px; width: 34px; height: 34px; display: flex;
+    align-items: center; justify-content: center; cursor: pointer;
+    transition: background 0.2s, transform 0.1s; font-size: 17px; flex-shrink: 0;
+  }
+  .bot-btn:hover { background: var(--yellow-dark); transform: scale(1.05); }
+  .bot-btn:active { transform: scale(0.96); }
+  .bot-btn.loading { animation: spin 1s linear infinite; pointer-events: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  input.has-btn { padding-right: 50px; }
+  .status-bar {
+    display: none; align-items: center; gap: 8px;
+    margin-top: 8px; font-size: 12px; font-weight: 600;
+  }
+  .status-bar.show { display: flex; }
+  .status-bar.ok { color: var(--success); }
+  .status-bar.err { color: var(--error); }
+  .status-bar.loading { color: var(--yellow); }
+
+  /* PRODUTO CARD */
+  .product-thumb {
+    display: none; align-items: center; gap: 12px;
+    background: #111; border: 1px solid #2a2a2a; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 18px;
+  }
+  .product-thumb.show { display: flex; }
+  .product-thumb img { width: 52px; height: 52px; object-fit: contain; border-radius: 6px; background: #fff; }
+  .product-thumb-info { flex: 1; min-width: 0; }
+  .product-thumb-title { font-size: 12px; font-weight: 600; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-thumb-price { font-size: 11px; color: var(--success); margin-top: 3px; }
+
+  .toggle-wrap {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 22px; cursor: pointer; user-select: none;
+  }
+  .toggle {
+    width: 40px; height: 22px; background: #333; border-radius: 11px;
+    position: relative; transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle::after {
+    content: ''; position: absolute; width: 16px; height: 16px;
+    background: white; border-radius: 50%; top: 3px; left: 3px; transition: left 0.2s;
+  }
+  .toggle.on { background: var(--yellow); }
+  .toggle.on::after { left: 21px; background: #000; }
+  .toggle-label { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .cupom-fields { display: none; margin-bottom: 18px; }
+  .cupom-fields.show { display: block; }
+  .btn-primary {
+    width: 100%; background: var(--yellow); color: #000; border: none;
+    border-radius: 8px; font-family: 'Anton', sans-serif; font-size: 18px;
+    letter-spacing: 1px; padding: 16px; cursor: pointer;
+    transition: background 0.2s, transform 0.1s; text-transform: uppercase;
+  }
+  .btn-primary:hover { background: var(--yellow-dark); }
+  .btn-primary:active { transform: scale(0.99); }
+  .preview {
+    display: none; margin-top: 22px; background: #111; border: 1px solid #2a2a2a;
+    border-radius: 10px; padding: 20px; animation: fadeIn 0.3s ease;
+  }
+  .preview.show { display: block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .preview-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  }
+  .preview-text {
+    background: #0a0a0a; border: 1px solid #222; border-radius: 8px;
+    padding: 14px; font-size: 13px; line-height: 1.8; white-space: pre-wrap;
+    color: #ddd; max-height: 280px; overflow-y: auto; font-family: monospace;
+    margin-bottom: 14px;
+  }
+  .btn-wpp {
+    width: 100%; background: #25D366; color: white; border: none; border-radius: 8px;
+    font-family: 'Barlow', sans-serif; font-weight: 700; font-size: 15px;
+    padding: 14px; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; gap: 8px; transition: background 0.2s; text-decoration: none;
+  }
+  .btn-wpp:hover { background: #1dba57; }
+  .btn-copy {
+    width: 100%; background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 13px;
+    padding: 10px; cursor: pointer; margin-top: 8px; transition: all 0.2s;
+  }
+  .btn-copy:hover { border-color: #555; color: white; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .bot-info {
+    background: rgba(255,224,0,0.06); border: 1px solid rgba(255,224,0,0.2);
+    border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #bbb;
+    margin-bottom: 18px; display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="badge">🤖 Gerador de Promos</div>
+    <div class="title">PROMO<br><span>MAKER ML</span></div>
+    <p class="subtitle">Cole o link do Mercado Livre e gere seu post em segundos</p>
+  </div>
+
+  <div class="card">
+    <div class="bot-info">
+      <span>⚡</span>
+      <span>Clique em <strong style="color:var(--yellow)">🤖</strong> para o bot preencher tudo automaticamente com os dados do produto!</span>
+    </div>
+
+    <!-- LINK -->
+    <div class="field">
+      <label>Link do Produto <span class="req">*</span></label>
+      <div class="input-wrap">
+        <input type="text" id="linkInput" class="has-btn" placeholder="https://www.mercadolivre.com.br/..." />
+        <button class="bot-btn" id="botBtn" title="Ler produto automaticamente" onclick="readProduct()">🤖</button>
+      </div>
+      <div class="status-bar" id="statusBar">
+        <span id="statusIcon"></span>
+        <span id="statusText"></span>
+      </div>
+    </div>
+
+    <!-- THUMB DO PRODUTO -->
+    <div class="product-thumb" id="productThumb">
+      <img id="thumbImg" src="" alt="produto" />
+      <div class="product-thumb-info">
+        <div class="product-thumb-title" id="thumbTitle">—</div>
+        <div class="product-thumb-price" id="thumbPrice">—</div>
+      </div>
+    </div>
+
+    <!-- TÍTULO -->
+    <div class="field">
+      <label>Título da Promoção <span class="req">*</span></label>
+      <input type="text" id="titleInput" placeholder="Ex: Misturador Monocomando Inox" />
+    </div>
+
+    <!-- PREÇOS -->
+    <div class="row">
+      <div class="field">
+        <label>Preço De (Original)</label>
+        <input type="text" id="priceFrom" placeholder="269,00" />
+      </div>
+      <div class="field">
+        <label>Preço Por</label>
+        <input type="text" id="priceTo" placeholder="174,00" />
+      </div>
+    </div>
+
+    <!-- PARCELAMENTO -->
+    <div class="field">
+      <label>Parcelamento</label>
+      <input type="text" id="parcelaInput" placeholder="Ex: 12x de R$ 14,50 sem juros" />
+    </div>
+
+    <!-- LOJA -->
+    <div class="field">
+      <label>Loja no ML</label>
+      <input type="text" id="shopInput" placeholder="Ex: Loja Oficial IVENDI" />
+    </div>
+
+    <!-- DESCONTO -->
+    <div class="field">
+      <label>Desconto (%)</label>
+      <input type="text" id="discountInput" placeholder="Auto-calculado" />
+    </div>
+
+    <!-- TOGGLE CUPOM -->
+    <div class="toggle-wrap" onclick="toggleCupom()">
+      <div class="toggle" id="toggleCupom"></div>
+      <span class="toggle-label">Tem cupom?</span>
+    </div>
+
+    <div class="cupom-fields" id="cupomFields">
+      <div class="row">
+        <div class="field">
+          <label>Código do Cupom</label>
+          <input type="text" id="cupomCode" placeholder="MEGA10" />
+        </div>
+        <div class="field">
+          <label>Desconto Extra</label>
+          <input type="text" id="cupomDiscount" placeholder="10%" />
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <button class="btn-primary" onclick="generatePromo()">⚡ GERAR PROMO</button>
+
+    <!-- PREVIEW -->
+    <div class="preview" id="preview">
+      <div class="preview-label">📱 Preview — WhatsApp</div>
+      <div class="preview-text" id="previewText"></div>
+      <a class="btn-wpp" id="wppBtn" href="#" target="_blank">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        ENVIAR NO WHATSAPP
+      </a>
+      <button class="btn-copy" onclick="copyText()">📋 Copiar Texto</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let cupomOn = false;
+
+function toggleCupom() {
+  cupomOn = !cupomOn;
+  document.getElementById('toggleCupom').classList.toggle('on', cupomOn);
+  document.getElementById('cupomFields').classList.toggle('show', cupomOn);
+}
+
+function setStatus(type, icon, text) {
+  const bar = document.getElementById('statusBar');
+  bar.className = 'status-bar show ' + type;
+  document.getElementById('statusIcon').textContent = icon;
+  document.getElementById('statusText').textContent = text;
+}
+
+function extractMLItemId(url) {
+  const patterns = [
+    /\/(MLB\d+)/i,
+    /-(MLB\d+)-/i,
+    /\/(MLB-\d+)/i,
+    /(MLB\d+)/i,
+  ];
+  for (const re of patterns) {
+    const m = url.match(re);
+    if (m) return m[1].replace('-', '').toUpperCase();
+  }
+  return null;
+}
+
+async function readProduct() {
+  const link = document.getElementById('linkInput').value.trim();
+  if (!link) { setStatus('err', '⚠️', 'Cole o link do produto primeiro!'); return; }
+
+  const itemId = extractMLItemId(link);
+  if (!itemId) {
+    setStatus('err', '❌', 'Não encontrei o ID do produto na URL. Use o link completo do ML.');
+    return;
+  }
+
+  const btn = document.getElementById('botBtn');
+  btn.classList.add('loading');
+  btn.textContent = '⏳';
+  setStatus('loading', '🤖', `Buscando ${itemId}...`);
+
+  // Tenta múltiplos proxies em sequência para garantir que funcione
+  const ML_URL = `https://api.mercadolibre.com/items/${itemId}`;
+  const SELLER_URL = (sellerId) => `https://api.mercadolibre.com/users/${sellerId}`;
+  const proxies = [
+    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  ];
+
+  async function fetchML(url) {
+    // Tenta direto primeiro (funciona no Vercel/backend próprio)
+    try {
+      const r = await fetch(url);
+      if (r.ok) return r.json();
+    } catch(e) {}
+    // Tenta proxies em sequência
+    for (const proxy of proxies) {
+      try {
+        const r = await fetch(proxy(url));
+        if (r.ok) return r.json();
+      } catch(e) {}
+    }
+    throw new Error('Não foi possível acessar a API do ML');
+  }
+
+  try {
+    const item = await fetchML(ML_URL);
+
+    // Busca vendedor
+    let seller = {};
+    try { seller = await fetchML(SELLER_URL(item.seller_id)); } catch(e) {}
+
+    // Processa preços
+    const preco_promo    = item.price || 0;
+    const preco_original = item.original_price || null;
+
+    let desconto = null;
+    if (preco_original && preco_original > preco_promo) {
+      desconto = Math.round((1 - preco_promo / preco_original) * 100) + '%';
+    }
+
+    let parcelamento = null;
+    if (item.installments) {
+      const inst  = item.installments;
+      const valor = inst.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+      parcelamento = inst.quantity + 'x de R$ ' + valor + (inst.rate === 0 ? ' sem juros' : '');
+    }
+
+    const fmt = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    const p = {
+      titulo:         item.title,
+      preco_promo:    fmt(preco_promo),
+      preco_original: preco_original ? fmt(preco_original) : null,
+      desconto,
+      parcelamento,
+      loja:           seller.nickname || null,
+      thumbnail:      item.thumbnail || null,
+    };
+
+    // Preenche campos
+    document.getElementById('titleInput').value   = p.titulo || '';
+    document.getElementById('priceFrom').value    = p.preco_original || '';
+    document.getElementById('priceTo').value      = p.preco_promo || '';
+    document.getElementById('parcelaInput').value = p.parcelamento || '';
+    document.getElementById('shopInput').value    = p.loja || '';
+    document.getElementById('discountInput').value = p.desconto || '';
+
+    // Mostra thumb
+    if (p.thumbnail) {
+      document.getElementById('thumbImg').src = p.thumbnail.replace('http://', 'https://');
+      document.getElementById('thumbTitle').textContent = p.titulo;
+      document.getElementById('thumbPrice').textContent = 'R$ ' + p.preco_promo + (p.desconto ? ' — ' + p.desconto + ' OFF' : '');
+      document.getElementById('productThumb').classList.add('show');
+    }
+
+    setStatus('ok', '✅', 'Produto lido!' + (p.desconto ? ' ' + p.desconto + ' de desconto 🔥' : ''));
+  } catch (err) {
+    console.error(err);
+    setStatus('err', '❌', 'Erro ao buscar produto. Verifique o link e tente novamente.');
+  } finally {
+    btn.classList.remove('loading');
+    btn.textContent = '🤖';
+  }
+}
+
+// Auto-calcula desconto
+function calcDiscount() {
+  const from = parseFloat((document.getElementById('priceFrom').value || '').replace('.','').replace(',','.'));
+  const to   = parseFloat((document.getElementById('priceTo').value  || '').replace('.','').replace(',','.'));
+  if (from > 0 && to > 0 && from > to) {
+    document.getElementById('discountInput').value = Math.round((1 - to/from) * 100) + '%';
+  }
+}
+document.getElementById('priceFrom').addEventListener('blur', calcDiscount);
+document.getElementById('priceTo').addEventListener('blur', calcDiscount);
+
+function generatePromo() {
+  const link     = document.getElementById('linkInput').value.trim();
+  const title    = document.getElementById('titleInput').value.trim();
+  const from     = document.getElementById('priceFrom').value.trim();
+  const to       = document.getElementById('priceTo').value.trim();
+  const parcela  = document.getElementById('parcelaInput').value.trim();
+  const shop     = document.getElementById('shopInput').value.trim();
+  const discount = document.getElementById('discountInput').value.trim();
+
+  if (!title) { alert('Preencha o título da promoção!'); return; }
+
+  let msg = '🔥 *PROMOÇÃO IMPERDÍVEL!* 🔥\n\n';
+  msg += `📦 *${title}*\n\n`;
+  if (discount) msg += `🏷️ *${discount} DE DESCONTO!*\n\n`;
+  if (from) msg += `~~De: R$ ${from}~~\n`;
+  if (to)   msg += `✅ *Por apenas: R$ ${to}*\n`;
+  if (parcela) msg += `💳 ${parcela}\n`;
+  msg += '\n';
+  if (shop) msg += `🏪 Vendido por: *${shop}*\n`;
+
+  if (cupomOn) {
+    const code  = document.getElementById('cupomCode').value.trim();
+    const extra = document.getElementById('cupomDiscount').value.trim();
+    if (code) {
+      msg += `\n🎟️ *CUPOM EXTRA:* \`${code}\``;
+      if (extra) msg += ` → *${extra} adicional*`;
+      msg += '\n';
+    }
+  }
+
+  if (link) msg += `\n🔗 *Comprar agora:*\n${link}\n`;
+  msg += '\n⚡ _Oferta por tempo limitado! Corre que acaba!_';
+
+  document.getElementById('previewText').textContent = msg;
+  document.getElementById('preview').classList.add('show');
+  document.getElementById('wppBtn').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  document.getElementById('preview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyText() {
+  const text = document.getElementById('previewText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar Texto', 2000);
+  });
+}
+</script>
+</body>
+</html>
