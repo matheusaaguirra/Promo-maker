@@ -7,7 +7,10 @@ module.exports = async function handler(req, res) {
 
   if (url) {
     try {
-      const redirectRes = await fetch(url, { method: 'GET', redirect: 'follow' });
+      const redirectRes = await fetch(url, {
+        method: 'HEAD',      // igual Python
+          redirect: 'follow'
+        });
       const finalUrl = redirectRes.url;
       const match = finalUrl.match(/wid=(MLB\d+)/i) ||
                     finalUrl.match(/\/(MLB\d+)(?:[#?-]|$)/i) ||
