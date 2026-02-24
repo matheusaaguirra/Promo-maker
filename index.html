@@ -284,15 +284,18 @@ function extractMLItemId(url) {
   return null;
 }
 
-async function readProduct() {
-  const link = document.getElementById('linkInput').value.trim();
-  if (!link) { setStatus('err', '⚠️', 'Cole o link do produto primeiro!'); return; }
+const isShortLink = /meli\.la/i.test(link);
+  const apiUrl = isShortLink
+    ? `/api/produto?url=${encodeURIComponent(link)}`
+    : `/api/produto?id=${itemId}`;
 
-  const itemId = extractMLItemId(link);
-  if (!itemId) {
-    setStatus('err', '❌', 'Não encontrei o ID do produto na URL. Use o link completo do ML.');
-    return;
-  }
+  setStatus('loading', '🤖', isShortLink ? 'Resolvendo link afiliado...' : `Buscando ${itemId}...`);
+
+  try {
+    const res = await fetch(apiUrl);
+    const p = await res.json();
+    if (!res.ok) throw new Error(p.error || 'Erro na API');
+    // ... resto do código igual
 
   const btn = document.getElementById('botBtn');
   btn.classList.add('loading');
